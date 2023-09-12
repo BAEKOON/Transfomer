@@ -1,0 +1,27 @@
+- Transfomer( num_layers = 4, d_model(Embed_dim)=128, num_heads=8, d_feed_forward = 512, input_vocab_size=포르투갈어_vocab_size, target_vocab_size=영어_vocab_size,
+                            positional_encoding_input = 1000, positional_encoding_target = 1000, dropout_rate=0.1)
+  Transformer call (inp, tar_inp, training=True, enc_padding_mask,
+                                      combined_mask~max(dec_target_padding_mask, look_ahead_mask) , dec_padding_mask) 
+                                    // inp~토큰화->벡터화된 포르투갈어, tar_inp~~토큰화->벡터화된 영어                 
+	- Enc_output = Encoder(num_layers, d_model, num_heads, dff, input_vocab_size, pe_input, rate)
+	                               Encoder call( inp, training, enc_padding_mask)
+		- Encoder
+		  Embedding ->  Scaling by sqrt(d_model) -> POS_Encoding -> Dropout
+		  -> Encoding Layers call(inp, training, enc_padding_mask)
+			- Encoding Layers
+			  Encoder Self-Attention(Multi-Head-Attention) -> dropout(attention_output) -> out1 = input + attention_output -> Layer Normalization 
+			  -> FeedForward -> dropout -> out1 + feedforward_output -> Layer Normalization
+				- Multi-Head-Attention
+					- Dense(d_model)(q=inp), Dense(d_model)(k=inp), Dense(d_model)(v=inp) -> Split_heads -> Scaled_Dot_product_Attention -> Concat -> Dense(d_model)
+						- Scaled Dotproduct Attention : softmax(Q*K_t / sqrt(dk)) * V
+				- FeedFoward
+					- Dense(dff, relu) -> Dense(d_model)
+	- Dec_output, Attention_weights = Decoder(num_layers, d_model, num_heads, dff, target_vocab_size, pe_target, rate)
+	                                                                        Decoder call(tar, enc_output, training, look_ahead_mask, dec_padding_mask)
+		- Decoder
+		  Embedding -> Scaling by sqrt(d_model) -> POS_Encoding -> Dropout
+		  -> Decoding Layers call( tar_inp, enc_output, training, combined_mask~look_ahead_mask, dec_padding_mask)
+			- Decoding Layers
+			  Decoder Self-Attention(Multi-Head-Attention[q=k=v=tar], combined_look_ahead_mask) ~ attn1, attn_weight_block1 -> out1 = dropout(attn1) ->  tar_input + attn1 -> out1 = Layer Normailization
+			  -> Encoder-Decoder Attention(Multi-Head-Attention ~ q=enc_output, k=enc_output, v=out1, dec_padding_mask)~attn2, attn_weight_block2 -> dropout -> attn2 + out1 -> out2 = LayerNormalization
+			  -> feedforward(out2) -> dropout -> out3 = ff_output + out2
